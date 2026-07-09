@@ -1,0 +1,24 @@
+EA FC 26 Live Tracker - Admin / İzleyici Kurulumu
+
+Admin e-posta:
+serkanmutlu2109@gmail.com
+
+1) Supabase'e gir.
+2) SQL Editor > New query.
+3) admin-lock.sql dosyasındaki kodu yapıştır.
+4) Run de.
+
+Bundan sonra:
+- Linke giren herkes sadece izleyici olur.
+- Maç ekleme, silme, düzenleme görünmez.
+- Sadece serkanmutlu2109@gmail.com maili ile giriş yapan admin işlem yapabilir.
+
+Admin giriş:
+1) Sitede sol menüdeki admin kutusuna e-postanı yaz.
+2) Admin Giriş Linki Gönder'e bas.
+3) Gmail'e gelen linke tıkla.
+4) Site admin modunda açılır.
+
+Önemli:
+- Supabase Auth > URL Configuration içinde Site URL olarak Vercel linkini eklersen mail linkleri daha sorunsuz çalışır.
+- Secret key kullanılmaz.

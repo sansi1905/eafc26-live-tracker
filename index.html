@@ -27,7 +27,7 @@
       <nav class="nav">
         <button class="nav-btn active" data-page="dashboard">🏠 Dashboard</button>
         <button class="nav-btn" data-page="standings">🏆 Puan Durumu</button>
-        <button class="nav-btn" data-page="add">➕ Maç Ekle</button>
+        <button class="nav-btn" data-page="add" data-admin-only="true">➕ Maç Ekle</button>
         <button class="nav-btn" data-page="history">📜 Geçmiş</button>
         <button class="nav-btn" data-page="players">👤 Oyuncular</button>
         <button class="nav-btn" data-page="trophies">🏛️ Kupa Dolabı</button>
@@ -36,7 +36,17 @@
         <button class="nav-btn" data-page="settings">⚙️ Yedek</button>
       </nav>
 
-      <div class="danger-tools"><button id="statsToolsBtn">🧹 İstatistik Sil</button><div id="statsToolsMenu" class="danger-menu"><button id="seasonResetOpen">Sezon Sıfırlama</button><button id="matchResetOpen">Maç Sıfırlama</button></div></div>
+
+      <div class="admin-box" id="adminBox">
+        <div class="admin-status" id="adminStatus">👀 İzleyici modu</div>
+        <input id="adminEmailInput" placeholder="Admin e-posta" value="serkanmutlu2109@gmail.com" />
+        <div class="admin-actions">
+          <button id="adminLoginBtn">Admin Giriş Linki Gönder</button>
+          <button id="adminLogoutBtn" style="display:none">Çıkış Yap</button>
+        </div>
+      </div>
+
+      <div class="danger-tools"><button id="statsToolsBtn" data-admin-only="true">🧹 İstatistik Sil</button><div id="statsToolsMenu" class="danger-menu"><button id="seasonResetOpen">Sezon Sıfırlama</button><button id="matchResetOpen">Maç Sıfırlama</button></div></div>
 
       <div class="quick-score" id="sidebarScore"></div>
     </aside>
@@ -133,6 +143,7 @@
       </section>
 
       <section id="add" class="page">
+        <div id="viewerLockNotice" class="viewer-lock">🔒 Bu alan sadece admin içindir. İzleyiciler sadece sonuçları görebilir.</div>
         <div class="page-head">
           <div>
             <span class="kicker">Veri Girişi</span>

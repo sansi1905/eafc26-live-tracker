@@ -3,6 +3,7 @@ const SHEET_URL_KEY = "eafc26_google_sheet_webapp_url";
 const SUPABASE_URL_KEY = "eafc26_supabase_project_url";
 const SUPABASE_ANON_KEY = "eafc26_supabase_anon_key";
 const OFFLINE_QUEUE_KEY = "eafc26_offline_queue";
+const ADMIN_EMAIL = "serkanmutlu2109@gmail.com";
 const PLAYERS = ["Serkan","Ramazan"];
 const SEASON_TARGET = 50;
 let selectedSeasonNumber = null;
@@ -33,7 +34,9 @@ let editId = null;
 let supabaseClient = null;
 let realtimeChannel = null;
 let presenceChannel = null;
-let currentUserName = localStorage.getItem("eafc26_user_name") || "Serkan";
+let currentUserName = localStorage.getItem("eafc26_user_name") || "İzleyici";
+let isAdmin = false;
+let currentUserEmail = null;
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -63,12 +66,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("testSupabaseBtn").onclick = testSupabaseConnection;
   $("syncSupabaseBtn").onclick = syncAllMatchesToSupabase;
   $("loadSupabaseBtn").onclick = loadMatchesFromSupabase;
+  $("adminLoginBtn").onclick = adminLogin;
+  $("adminLogoutBtn").onclick = adminLogout;
   $("search").oninput = renderHistory;
   $("winnerFilter").onchange = renderHistory;
   $("sortMode").onchange = renderHistory;
   $("matchInput").addEventListener("input", renderPreview);
 
   initSupabaseClient();
+  await initAuthState();
   await autoLoadSupabaseIfConfigured();
   render();
   renderPreview();
@@ -86,6 +92,7 @@ function loadMatches(){
 }
 function saveMatches(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(matches)); }
 function resetAll(){
+  if(!isAdmin){ alert("Bu işlem sadece admin için açık."); return; }
   if(confirm("Tüm veriler silinsin mi?")){
     matches=[]; localStorage.removeItem(STORAGE_KEY); render(); toast("Tüm veriler sıfırlandı.");
   }
@@ -93,6 +100,7 @@ function resetAll(){
 
 function saveCurrentMatch(){
   const msg = $("message");
+  if(!isAdmin){ msg.textContent = "Bu işlem sadece admin için açık."; msg.style.color = "#fca5a5"; return; }
   try{
     const match = parseMatch($("matchInput").value);
     if(editId){
@@ -699,6 +707,7 @@ function closeModal(){
 }
 
 async function deleteMatchesFromSupabase(ids){
+  if(!isAdmin) return;
   if(!supabaseClient) initSupabaseClient();
   if(!supabaseClient || !ids?.length) return;
   try{
@@ -709,6 +718,7 @@ async function deleteMatchesFromSupabase(ids){
 }
 
 function openSeasonReset(){
+  if(!isAdmin){ alert("Bu işlem sadece admin için açık."); return; }
   const seasons = buildSeasons();
   openModal("Sezon Sıfırlama", `
     <p class="muted">Hangi sezonu sıfırlamak istiyorsun?</p>
@@ -734,6 +744,7 @@ function openSeasonReset(){
   });
 }
 function openMatchReset(){
+  if(!isAdmin){ alert("Bu işlem sadece admin için açık."); return; }
   const recent = matches.slice(0,20);
   openModal("Maç Sıfırlama", `
     <p class="muted">Silmek istediğin son maçları seç.</p>
@@ -762,6 +773,90 @@ function openMatchReset(){
 }
 
 
+
+
+async function initAuthState(){
+  if(!supabaseClient){
+    applyViewerMode();
+    return;
+  }
+
+  try{
+    const { data } = await supabaseClient.auth.getUser();
+    currentUserEmail = data?.user?.email || null;
+    isAdmin = currentUserEmail === ADMIN_EMAIL;
+    currentUserName = isAdmin ? "Serkan" : "İzleyici";
+    applyViewerMode();
+
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      currentUserEmail = session?.user?.email || null;
+      isAdmin = currentUserEmail === ADMIN_EMAIL;
+      currentUserName = isAdmin ? "Serkan" : "İzleyici";
+      applyViewerMode();
+      subscribePresence();
+    });
+  }catch(e){
+    isAdmin = false;
+    currentUserEmail = null;
+    applyViewerMode();
+  }
+}
+
+function applyViewerMode(){
+  document.body.classList.toggle("viewer-mode", !isAdmin);
+
+  const status = $("adminStatus");
+  const loginBtn = $("adminLoginBtn");
+  const logoutBtn = $("adminLogoutBtn");
+  const emailInput = $("adminEmailInput");
+
+  if(status){
+    status.textContent = isAdmin ? `✅ Admin: ${currentUserEmail}` : "👀 İzleyici modu";
+    status.classList.toggle("admin", isAdmin);
+  }
+  if(loginBtn) loginBtn.style.display = isAdmin ? "none" : "block";
+  if(logoutBtn) logoutBtn.style.display = isAdmin ? "block" : "none";
+  if(emailInput) emailInput.style.display = isAdmin ? "none" : "block";
+
+  const active = document.querySelector(".nav-btn.active");
+  if(!isAdmin && active?.dataset.page === "add"){
+    switchPage("dashboard");
+  }
+}
+
+async function adminLogin(){
+  if(!supabaseClient) initSupabaseClient();
+  if(!supabaseClient) return alert("Supabase bağlantısı yok.");
+
+  const email = ($("adminEmailInput")?.value || "").trim().toLowerCase();
+  if(email !== ADMIN_EMAIL){
+    alert("Bu e-posta admin olarak tanımlı değil.");
+    return;
+  }
+
+  const redirectTo = window.location.origin + window.location.pathname;
+
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options:{ emailRedirectTo: redirectTo }
+  });
+
+  if(error){
+    alert("Giriş linki gönderilemedi: " + error.message);
+    return;
+  }
+
+  alert("Admin giriş linki e-postana gönderildi. Maildeki linke tıkla, siteye admin olarak döneceksin.");
+}
+
+async function adminLogout(){
+  if(supabaseClient) await supabaseClient.auth.signOut();
+  isAdmin = false;
+  currentUserEmail = null;
+  currentUserName = "İzleyici";
+  applyViewerMode();
+  alert("Çıkış yapıldı. Site izleyici modunda.");
+}
 
 function initSupabaseClient(){
   const staticUrl = window.EAFC26_SUPABASE?.url || "";
@@ -870,6 +965,7 @@ async function loadMatchesFromSupabase(){
 }
 
 async function syncMatchToSupabase(match){
+  if(!isAdmin) return;
   if(!supabaseClient) initSupabaseClient();
 
   if(!navigator.onLine || !supabaseClient){
@@ -903,6 +999,7 @@ async function syncMatchToSupabase(match){
 }
 
 async function syncAllMatchesToSupabase(){
+  if(!isAdmin) return setSupabaseStatus("Bu işlem sadece admin için açık.", false);
   if(!supabaseClient) initSupabaseClient();
   if(!supabaseClient) return setSupabaseStatus("Önce Supabase URL ve anon key girip kaydet.", false);
   if(!matches.length) return setSupabaseStatus("Aktarılacak maç yok.", false);
