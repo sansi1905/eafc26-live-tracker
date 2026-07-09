@@ -1,0 +1,16 @@
+EA FC 26 v13 - Otomatik Supabase Kayıt
+
+Bu sürümde:
+- Maçı Kaydet butonuna basınca otomatik Supabase'e kaydeder.
+- Manuel "Mevcut maçları Supabase'e aktar" butonuna gerek kalmaz.
+- İnternet yoksa maç yerelde kaydolur, bağlantı gelince otomatik gönderilir.
+- Maç silme işlemi de Supabase'den siler.
+- İzleyiciler işlem yapamaz; sadece admin giriş yaparsa ekleme/silme/düzenleme açıktır.
+
+GitHub'a yükleme:
+1) index.html
+2) style.css
+3) script.js
+4) config.js
+dosyalarını eski dosyaların üstüne yükle.
+Vercel otomatik deploy eder.

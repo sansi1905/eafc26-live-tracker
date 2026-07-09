@@ -98,11 +98,25 @@ function resetAll(){
   }
 }
 
-function saveCurrentMatch(){
+async function saveCurrentMatch(){
   const msg = $("message");
-  if(!isAdmin){ msg.textContent = "Bu işlem sadece admin için açık."; msg.style.color = "#fca5a5"; return; }
+  const btn = $("saveBtn");
+
+  if(!isAdmin){
+    msg.textContent = "Bu işlem sadece admin için açık.";
+    msg.style.color = "#fca5a5";
+    return;
+  }
+
   try{
+    btn.disabled = true;
+    btn.textContent = "Kaydediliyor...";
+    msg.textContent = "Maç kaydediliyor...";
+    msg.style.color = "#fde68a";
+
     const match = parseMatch($("matchInput").value);
+    const wasEdit = Boolean(editId);
+
     if(editId){
       const i = matches.findIndex(m => m.id === editId);
       if(i >= 0){
@@ -112,23 +126,44 @@ function saveCurrentMatch(){
         matches[i] = match;
       }
       editId = null;
-      $("saveBtn").textContent = "Maçı Kaydet";
-      msg.textContent = "Maç güncellendi: " + scoreLine(match);
     }else{
       matches.unshift(match);
-      msg.textContent = "Kaydedildi: " + scoreLine(match);
     }
-    msg.style.color = "#86efac";
+
     $("matchInput").value = "";
     saveMatches();
-    syncMatchToSheet(match);
-    syncMatchToSupabase(match);
     render();
     renderPreview();
-    toast("Maç kaydedildi.");
+
+    // Google Sheet yedek denemesi arka planda kalır, ana canlı sistem Supabase'tir.
+    syncMatchToSheet(match);
+
+    const syncResult = await syncMatchToSupabase(match);
+    render();
+
+    btn.textContent = "Maçı Kaydet";
+
+    if(syncResult === "synced"){
+      msg.textContent = wasEdit
+        ? "✓ Maç güncellendi ve canlı siteye kaydedildi: " + scoreLine(match)
+        : "✓ Maç kaydedildi ve canlı siteye gönderildi: " + scoreLine(match);
+      msg.style.color = "#86efac";
+      toast("Maç canlı siteye kaydedildi.");
+    }else if(syncResult === "queued"){
+      msg.textContent = "✓ Yerel kayıt yapıldı. İnternet/Supabase gelince otomatik gönderilecek: " + scoreLine(match);
+      msg.style.color = "#fde68a";
+      toast("Maç sıraya alındı.");
+    }else{
+      msg.textContent = "✓ Yerel kayıt yapıldı: " + scoreLine(match);
+      msg.style.color = "#86efac";
+      toast("Maç kaydedildi.");
+    }
   }catch(e){
     msg.textContent = e.message;
     msg.style.color = "#fca5a5";
+  }finally{
+    btn.disabled = false;
+    if(!editId) btn.textContent = "Maçı Kaydet";
   }
 }
 
@@ -548,8 +583,7 @@ function matchCard(m){
     <div class="detail">
       ${table(m)}
       <div class="card-actions">
-        <button class="secondary edit-btn" data-id="${m.id}">Düzenle</button>
-        <button class="mini-danger delete-btn" data-id="${m.id}">Sil</button>
+        ${isAdmin ? `<button class="secondary edit-btn" data-id="${m.id}">Düzenle</button><button class="mini-danger delete-btn" data-id="${m.id}">Sil</button>` : ``}
       </div>
     </div>
   </div>`;
@@ -570,14 +604,17 @@ function bindCards(){
   });
 
   document.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.onclick = (e) => {
+    btn.onclick = async (e) => {
       e.stopPropagation();
+      if(!isAdmin){ alert("Bu işlem sadece admin için açık."); return; }
+
       const id = btn.dataset.id;
       if(confirm("Bu maç silinsin mi?")){
         matches = matches.filter(m => m.id !== id);
+        await deleteMatchesFromSupabase([id]);
         saveMatches();
         render();
-        toast("Maç silindi.");
+        toast("Maç silindi ve canlı siteden kaldırıldı.");
       }
     };
   });
@@ -965,7 +1002,7 @@ async function loadMatchesFromSupabase(){
 }
 
 async function syncMatchToSupabase(match){
-  if(!isAdmin) return;
+  if(!isAdmin) return "none";
   if(!supabaseClient) initSupabaseClient();
 
   if(!navigator.onLine || !supabaseClient){
@@ -974,7 +1011,7 @@ async function syncMatchToSupabase(match){
     match.supabaseError = true;
     saveMatches();
     updateSyncWidget("pending", "☁ İnternet yok, sıraya alındı");
-    return;
+    return "queued";
   }
 
   try{
@@ -989,12 +1026,14 @@ async function syncMatchToSupabase(match){
     match.supabaseError = false;
     saveMatches();
     updateSyncWidget("online", "☁ Son senkronizasyon şimdi");
+    return "synced";
   }catch(e){
     queueOfflineMatch(match);
     match.supabaseSynced = false;
     match.supabaseError = true;
     saveMatches();
     updateSyncWidget("pending", "☁ Gönderilemedi, sıraya alındı");
+    return "queued";
   }
 }
 
@@ -1172,6 +1211,9 @@ async function flushOfflineQueue(){
 
     if(error) throw error;
     localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    matches = matches.map(m => ({...m, supabaseSynced:true, supabaseError:false}));
+    saveMatches();
+    render();
     updateSyncWidget("online", "☁ Bekleyen maçlar gönderildi");
   }catch(e){
     updateSyncWidget("pending", "☁ Bekleyen maçlar duruyor");

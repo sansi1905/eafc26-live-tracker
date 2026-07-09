@@ -748,3 +748,17 @@ body.viewer-mode #viewerLockNotice{
 body.viewer-mode .add-grid{
   grid-template-columns:1fr;
 }
+
+
+/* v13 Auto Save polish */
+body .sheet-form #syncSupabaseBtn,
+body .sheet-form #loadSupabaseBtn,
+body .sheet-form #testSupabaseBtn{
+  display:none!important;
+}
+.auto-sync-note{
+  margin-top:10px;
+  color:#86efac;
+  font-weight:900;
+  font-size:13px;
+}
