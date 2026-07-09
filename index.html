@@ -40,8 +40,9 @@
       <div class="admin-box" id="adminBox">
         <div class="admin-status" id="adminStatus">👀 İzleyici modu</div>
         <input id="adminEmailInput" placeholder="Admin e-posta" value="serkanmutlu2109@gmail.com" />
+        <input id="adminPasswordInput" type="password" placeholder="Admin şifre" autocomplete="current-password" />
         <div class="admin-actions">
-          <button id="adminLoginBtn">Admin Giriş Linki Gönder</button>
+          <button id="adminLoginBtn">Admin Giriş Yap</button>
           <button id="adminLogoutBtn" style="display:none">Çıkış Yap</button>
         </div>
       </div>
@@ -289,7 +290,6 @@
               <button class="secondary" id="syncSupabaseBtn">Mevcut Maçları Supabase'e Aktar</button>
               <button class="secondary" id="loadSupabaseBtn">Supabase'den Yükle</button>
             </div>
-            <div class="auto-sync-note">✅ Artık Maçı Kaydet butonuna basınca otomatik Supabase’e gönderilir.</div>
 
             <div id="supabaseStatus" class="message"></div>
           </div>

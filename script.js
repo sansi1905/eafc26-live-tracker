@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("loadSupabaseBtn").onclick = loadMatchesFromSupabase;
   $("adminLoginBtn").onclick = adminLogin;
   $("adminLogoutBtn").onclick = adminLogout;
+  $("adminPasswordInput").addEventListener("keydown", (e) => { if(e.key === "Enter") adminLogin(); });
   $("search").oninput = renderHistory;
   $("winnerFilter").onchange = renderHistory;
   $("sortMode").onchange = renderHistory;
@@ -98,25 +99,11 @@ function resetAll(){
   }
 }
 
-async function saveCurrentMatch(){
+function saveCurrentMatch(){
   const msg = $("message");
-  const btn = $("saveBtn");
-
-  if(!isAdmin){
-    msg.textContent = "Bu işlem sadece admin için açık.";
-    msg.style.color = "#fca5a5";
-    return;
-  }
-
+  if(!isAdmin){ msg.textContent = "Bu işlem sadece admin için açık."; msg.style.color = "#fca5a5"; return; }
   try{
-    btn.disabled = true;
-    btn.textContent = "Kaydediliyor...";
-    msg.textContent = "Maç kaydediliyor...";
-    msg.style.color = "#fde68a";
-
     const match = parseMatch($("matchInput").value);
-    const wasEdit = Boolean(editId);
-
     if(editId){
       const i = matches.findIndex(m => m.id === editId);
       if(i >= 0){
@@ -126,44 +113,23 @@ async function saveCurrentMatch(){
         matches[i] = match;
       }
       editId = null;
+      $("saveBtn").textContent = "Maçı Kaydet";
+      msg.textContent = "Maç güncellendi: " + scoreLine(match);
     }else{
       matches.unshift(match);
+      msg.textContent = "Kaydedildi: " + scoreLine(match);
     }
-
+    msg.style.color = "#86efac";
     $("matchInput").value = "";
     saveMatches();
+    syncMatchToSheet(match);
+    syncMatchToSupabase(match);
     render();
     renderPreview();
-
-    // Google Sheet yedek denemesi arka planda kalır, ana canlı sistem Supabase'tir.
-    syncMatchToSheet(match);
-
-    const syncResult = await syncMatchToSupabase(match);
-    render();
-
-    btn.textContent = "Maçı Kaydet";
-
-    if(syncResult === "synced"){
-      msg.textContent = wasEdit
-        ? "✓ Maç güncellendi ve canlı siteye kaydedildi: " + scoreLine(match)
-        : "✓ Maç kaydedildi ve canlı siteye gönderildi: " + scoreLine(match);
-      msg.style.color = "#86efac";
-      toast("Maç canlı siteye kaydedildi.");
-    }else if(syncResult === "queued"){
-      msg.textContent = "✓ Yerel kayıt yapıldı. İnternet/Supabase gelince otomatik gönderilecek: " + scoreLine(match);
-      msg.style.color = "#fde68a";
-      toast("Maç sıraya alındı.");
-    }else{
-      msg.textContent = "✓ Yerel kayıt yapıldı: " + scoreLine(match);
-      msg.style.color = "#86efac";
-      toast("Maç kaydedildi.");
-    }
+    toast("Maç kaydedildi.");
   }catch(e){
     msg.textContent = e.message;
     msg.style.color = "#fca5a5";
-  }finally{
-    btn.disabled = false;
-    if(!editId) btn.textContent = "Maçı Kaydet";
   }
 }
 
@@ -583,7 +549,8 @@ function matchCard(m){
     <div class="detail">
       ${table(m)}
       <div class="card-actions">
-        ${isAdmin ? `<button class="secondary edit-btn" data-id="${m.id}">Düzenle</button><button class="mini-danger delete-btn" data-id="${m.id}">Sil</button>` : ``}
+        <button class="secondary edit-btn" data-id="${m.id}">Düzenle</button>
+        <button class="mini-danger delete-btn" data-id="${m.id}">Sil</button>
       </div>
     </div>
   </div>`;
@@ -604,17 +571,14 @@ function bindCards(){
   });
 
   document.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.onclick = async (e) => {
+    btn.onclick = (e) => {
       e.stopPropagation();
-      if(!isAdmin){ alert("Bu işlem sadece admin için açık."); return; }
-
       const id = btn.dataset.id;
       if(confirm("Bu maç silinsin mi?")){
         matches = matches.filter(m => m.id !== id);
-        await deleteMatchesFromSupabase([id]);
         saveMatches();
         render();
-        toast("Maç silindi ve canlı siteden kaldırıldı.");
+        toast("Maç silindi.");
       }
     };
   });
@@ -846,6 +810,7 @@ function applyViewerMode(){
   const loginBtn = $("adminLoginBtn");
   const logoutBtn = $("adminLogoutBtn");
   const emailInput = $("adminEmailInput");
+  const passwordInput = $("adminPasswordInput");
 
   if(status){
     status.textContent = isAdmin ? `✅ Admin: ${currentUserEmail}` : "👀 İzleyici modu";
@@ -854,6 +819,7 @@ function applyViewerMode(){
   if(loginBtn) loginBtn.style.display = isAdmin ? "none" : "block";
   if(logoutBtn) logoutBtn.style.display = isAdmin ? "block" : "none";
   if(emailInput) emailInput.style.display = isAdmin ? "none" : "block";
+  if(passwordInput) passwordInput.style.display = isAdmin ? "none" : "block";
 
   const active = document.querySelector(".nav-btn.active");
   if(!isAdmin && active?.dataset.page === "add"){
@@ -866,24 +832,43 @@ async function adminLogin(){
   if(!supabaseClient) return alert("Supabase bağlantısı yok.");
 
   const email = ($("adminEmailInput")?.value || "").trim().toLowerCase();
+  const password = ($("adminPasswordInput")?.value || "").trim();
+
   if(email !== ADMIN_EMAIL){
     alert("Bu e-posta admin olarak tanımlı değil.");
     return;
   }
 
-  const redirectTo = window.location.origin + window.location.pathname;
-
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options:{ emailRedirectTo: redirectTo }
-  });
-
-  if(error){
-    alert("Giriş linki gönderilemedi: " + error.message);
+  if(!password){
+    alert("Şifre gir.");
     return;
   }
 
-  alert("Admin giriş linki e-postana gönderildi. Maildeki linke tıkla, siteye admin olarak döneceksin.");
+  const btn = $("adminLoginBtn");
+  btn.disabled = true;
+  btn.textContent = "Giriş yapılıyor...";
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  btn.disabled = false;
+  btn.textContent = "Admin Giriş Yap";
+
+  if(error){
+    alert("Giriş başarısız: " + error.message);
+    return;
+  }
+
+  currentUserEmail = data?.user?.email || null;
+  isAdmin = currentUserEmail === ADMIN_EMAIL;
+  currentUserName = isAdmin ? "Serkan" : "İzleyici";
+  if($("adminPasswordInput")) $("adminPasswordInput").value = "";
+  applyViewerMode();
+  subscribePresence();
+  render();
+  alert("Admin girişi başarılı.");
 }
 
 async function adminLogout(){
@@ -1002,7 +987,7 @@ async function loadMatchesFromSupabase(){
 }
 
 async function syncMatchToSupabase(match){
-  if(!isAdmin) return "none";
+  if(!isAdmin) return;
   if(!supabaseClient) initSupabaseClient();
 
   if(!navigator.onLine || !supabaseClient){
@@ -1011,7 +996,7 @@ async function syncMatchToSupabase(match){
     match.supabaseError = true;
     saveMatches();
     updateSyncWidget("pending", "☁ İnternet yok, sıraya alındı");
-    return "queued";
+    return;
   }
 
   try{
@@ -1026,14 +1011,12 @@ async function syncMatchToSupabase(match){
     match.supabaseError = false;
     saveMatches();
     updateSyncWidget("online", "☁ Son senkronizasyon şimdi");
-    return "synced";
   }catch(e){
     queueOfflineMatch(match);
     match.supabaseSynced = false;
     match.supabaseError = true;
     saveMatches();
     updateSyncWidget("pending", "☁ Gönderilemedi, sıraya alındı");
-    return "queued";
   }
 }
 
@@ -1211,9 +1194,6 @@ async function flushOfflineQueue(){
 
     if(error) throw error;
     localStorage.removeItem(OFFLINE_QUEUE_KEY);
-    matches = matches.map(m => ({...m, supabaseSynced:true, supabaseError:false}));
-    saveMatches();
-    render();
     updateSyncWidget("online", "☁ Bekleyen maçlar gönderildi");
   }catch(e){
     updateSyncWidget("pending", "☁ Bekleyen maçlar duruyor");

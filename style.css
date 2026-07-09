@@ -750,15 +750,10 @@ body.viewer-mode .add-grid{
 }
 
 
-/* v13 Auto Save polish */
-body .sheet-form #syncSupabaseBtn,
-body .sheet-form #loadSupabaseBtn,
-body .sheet-form #testSupabaseBtn{
-  display:none!important;
-}
-.auto-sync-note{
-  margin-top:10px;
-  color:#86efac;
-  font-weight:900;
-  font-size:13px;
+/* v14 Password Login */
+.admin-box input[type="password"]{
+  width:100%;
+  padding:10px 11px;
+  border-radius:13px;
+  font-size:12px;
 }
