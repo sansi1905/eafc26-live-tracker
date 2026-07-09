@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EA FC 26 Live Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="toast" id="toast"></div>
+  <div class="sync-widget" id="syncWidget">☁ Canlı bağlantı bekleniyor</div>
+  <div class="live-users" id="liveUsers"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">26</div>
+        <div>
+          <h1>EA FC Ultimate</h1>
+          <p>Serkan vs Ramazan</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-page="dashboard">🏠 Dashboard</button>
+        <button class="nav-btn" data-page="standings">🏆 Puan Durumu</button>
+        <button class="nav-btn" data-page="add">➕ Maç Ekle</button>
+        <button class="nav-btn" data-page="history">📜 Geçmiş</button>
+        <button class="nav-btn" data-page="players">👤 Oyuncular</button>
+        <button class="nav-btn" data-page="trophies">🏛️ Kupa Dolabı</button>
+        <button class="nav-btn" data-page="records">🏆 Rekorlar</button>
+        <button class="nav-btn" data-page="badges">🎖️ Rozetler</button>
+        <button class="nav-btn" data-page="settings">⚙️ Yedek</button>
+      </nav>
+
+      <div class="danger-tools"><button id="statsToolsBtn">🧹 İstatistik Sil</button><div id="statsToolsMenu" class="danger-menu"><button id="seasonResetOpen">Sezon Sıfırlama</button><button id="matchResetOpen">Maç Sıfırlama</button></div></div>
+
+      <div class="quick-score" id="sidebarScore"></div>
+    </aside>
+
+    <main class="main">
+      <section id="dashboard" class="page active">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Canlı Panel</span>
+            <h2>Dashboard</h2>
+          </div>
+          <div class="live-pill" id="livePill">0 maç</div>
+        </div>
+
+        <div class="scoreboard">
+          <div class="score-player yellow">
+            <span>Serkan</span>
+            <strong id="serkanWinsHero">0</strong>
+            <small>Galibiyet</small>
+          </div>
+          <div class="score-mid">
+            <span>TOPLAM SKOR</span>
+            <strong id="totalScoreHero">0 - 0</strong>
+            <small>Atılan toplam gol</small>
+          </div>
+          <div class="score-player red">
+            <span>Ramazan</span>
+            <strong id="ramazanWinsHero">0</strong>
+            <small>Galibiyet</small>
+          </div>
+        </div>
+
+        <div id="dashboardCards" class="cards-grid"></div>
+
+        <div class="layout-2">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Son 10 Form</h3>
+              <span>G / M</span>
+            </div>
+            <div id="formBox"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Gol Trend Grafiği</h3>
+              <span>Son 12 maç</span>
+            </div>
+            <div id="goalChart" class="goal-chart"></div>
+            <div class="legend"><span class="legend-y"></span>Serkan <span class="legend-r"></span>Ramazan</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Son Maçlar</h3>
+            <span id="recentCount">0 kayıt</span>
+          </div>
+          <div id="recentMatches" class="match-list"></div>
+        </div>
+      </section>
+
+
+      <section id="standings" class="page">
+        <div class="page-head standings-head">
+          <div>
+            <span class="kicker">EA FC 26 Ligi</span>
+            <h2>Puan Durumu</h2>
+          </div>
+
+          <div class="season-dropdown">
+            <button id="seasonSelectBtn" class="season-select-btn">🏆 1. Sezon ▼</button>
+            <div id="seasonMenu" class="season-menu"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3 id="selectedSeasonTitle">1. Sezon Lig Tablosu</h3>
+            <span>P / O / G / M / AG / YG / AV</span>
+          </div>
+          <div id="standingsTable"></div>
+        </div>
+
+        <div id="standingsCards" class="records-grid"></div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Sezon Maçları</h3>
+            <span id="selectedSeasonInfo">Seçili sezon maçları</span>
+          </div>
+          <div id="selectedSeasonMatches" class="season-match-list"></div>
+        </div>
+      </section>
+
+      <section id="add" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Veri Girişi</span>
+            <h2>Maç Ekle</h2>
+          </div>
+        </div>
+
+        <div class="add-grid">
+          <div class="panel input-panel">
+            <div class="panel-head">
+              <h3>İstatistik Tablosu</h3>
+              <span>İsim sırası otomatik algılanır</span>
+            </div>
+            <textarea id="matchInput" spellcheck="false" placeholder="| İstatistik | Ramazan | Serkan |
+| Skor | 4 | 2 |
+| Topa sahip olma | %56 | %44 |
+| Şut | 13 | 9 |"></textarea>
+            <div class="actions">
+              <button class="primary" id="saveBtn">Maçı Kaydet</button>
+              <button class="secondary" id="sampleBtn">Örnek Doldur</button>
+              <button class="secondary" id="clearInputBtn">Temizle</button>
+            </div>
+            <div id="message" class="message"></div>
+          </div>
+
+          <div class="panel preview-panel">
+            <div class="panel-head">
+              <h3>Canlı Önizleme</h3>
+              <span>Kaydetmeden kontrol et</span>
+            </div>
+            <div id="previewBox" class="preview-box muted">İstatistik metni yapıştırınca burada önizleme oluşacak.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="history" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Arşiv</span>
+            <h2>Geçmiş Maçlar</h2>
+          </div>
+        </div>
+        <div class="toolbar">
+          <input id="search" placeholder="Oyuncu, skor veya tarih ara..." />
+          <select id="winnerFilter">
+            <option value="all">Tüm maçlar</option>
+            <option value="Serkan">Serkan kazandı</option>
+            <option value="Ramazan">Ramazan kazandı</option>
+          </select>
+          <select id="sortMode">
+            <option value="new">Yeni → Eski</option>
+            <option value="old">Eski → Yeni</option>
+            <option value="goals">En gollü</option>
+            <option value="diff">En farklı</option>
+            <option value="xg">En yüksek xG</option>
+            <option value="shots">En çok şut</option>
+          </select>
+        </div>
+        <div id="historyList" class="match-list"></div>
+      </section>
+
+      <section id="players" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Oyuncu Analizi</span>
+            <h2>Oyuncular</h2>
+          </div>
+        </div>
+        <div id="playersGrid" class="players-grid"></div>
+      </section>
+
+
+      <section id="trophies" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Şampiyonluk Arşivi</span>
+            <h2>Kupa Dolabı</h2>
+          </div>
+        </div>
+
+        <div id="trophyCabinet" class="trophy-cabinet"></div>
+      </section>
+
+      <section id="records" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Otomatik Rekorlar</span>
+            <h2>Rekorlar</h2>
+          </div>
+        </div>
+        <div id="recordsGrid" class="records-grid"></div>
+      </section>
+
+      <section id="badges" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Başarımlar</span>
+            <h2>Rozetler</h2>
+          </div>
+        </div>
+        <div id="badgesGrid" class="badges-grid"></div>
+      </section>
+
+      <section id="settings" class="page">
+        <div class="page-head">
+          <div>
+            <span class="kicker">Güvenlik</span>
+            <h2>Yedek / Aktarım</h2>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Veri Yönetimi</h3>
+          <p class="muted">Maçların tarayıcıda saklanır. Yedek alıp sonra tekrar yükleyebilirsin.</p>
+          <div class="actions">
+            <button class="primary" id="exportBtn">JSON Yedek Al</button>
+            <label class="secondary file-label">Yedek Yükle<input type="file" id="importFile" accept="application/json" hidden></label>
+            <button class="danger" id="resetBtn">Tüm Veriyi Sıfırla</button>
+          </div>
+        </div>
+
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Supabase Canlı Site Bağlantısı</h3>
+            <span>Sen + Ramazan ortak veri</span>
+          </div>
+          <p class="muted">Project URL ve anon public key girilince maçlar ortak veritabanına yazılır. Mevcut kayıtları tek seferde Supabase'e aktarabilirsin.</p>
+
+          <div class="sheet-form">
+            <label>
+              <span>Supabase Project URL</span>
+              <input id="supabaseUrlInput" placeholder="https://xxxxx.supabase.co" />
+            </label>
+
+            <label>
+              <span>Supabase anon public key</span>
+              <input id="supabaseAnonInput" placeholder="eyJhbGciOiJIUzI1NiIs..." />
+            </label>
+
+            <div class="actions">
+              <button class="primary" id="saveSupabaseBtn">Supabase Kaydet</button>
+              <button class="secondary" id="testSupabaseBtn">Bağlantıyı Test Et</button>
+              <button class="secondary" id="syncSupabaseBtn">Mevcut Maçları Supabase'e Aktar</button>
+              <button class="secondary" id="loadSupabaseBtn">Supabase'den Yükle</button>
+            </div>
+
+            <div id="supabaseStatus" class="message"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Supabase SQL Kurulumu</h3>
+            <span>Table Editor yerine SQL Editor</span>
+          </div>
+          <p class="muted">ZIP içindeki <b>supabase-setup.sql</b> dosyasındaki kodu Supabase → SQL Editor → New query içine yapıştırıp Run de.</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Google Sheets Senkronizasyonu</h3>
+            <span>Mevcut veriler korunur</span>
+          </div>
+          <p class="muted">Apps Script Web App URL’sini buraya yapıştır. Yeni maçlar otomatik Sheet’e yazılır. İstersen mevcut kayıtları tek seferde Sheet’e aktarabilirsin.</p>
+          <div class="sheet-form">
+            <label>
+              <span>Apps Script Web App URL</span>
+              <input id="sheetUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+            </label>
+            <div class="actions">
+              <button class="primary" id="saveSheetUrlBtn">Sheet URL Kaydet</button>
+              <button class="secondary" id="testSheetBtn">Bağlantıyı Test Et</button>
+              <button class="secondary" id="syncAllBtn">Mevcut Maçları Sheet’e Aktar</button>
+            </div>
+            <div id="sheetStatus" class="message"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Apps Script Kodu</h3>
+            <span>Google Sheet içine yapıştırılacak</span>
+          </div>
+          <p class="muted">ZIP içindeki <b>apps-script-code.txt</b> dosyasındaki kodu Google Sheets → Uzantılar → Apps Script içine yapıştır.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+
+  <div class="modal" id="resetModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitle">İstatistik Sil</h3>
+        <button id="modalClose">✕</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
+</body>
+</html>
